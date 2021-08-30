@@ -1,6 +1,6 @@
 {
-  "name": "@graviton-one/dao-bid",
-  "description": "smart contracts for DAOBid",
+  "name": "@graviton-one/party-rarible",
+  "description": "smart contracts for PartyRarible",
   "license": "",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -32,6 +32,7 @@
     "@rarible/lib-asset": "^0.1.1",
     "@rarible/royalties": "^0.7.2",
     "@rarible/royalties-upgradeable": "^0.7.2",
+    "@rarible/types": "^0.1.7",
     "@typechain/ethers-v5": "^7.0.1",
     "@typechain/hardhat": "^2.0.2",
     "@types/chai-as-promised": "^7.1.4",
@@ -45,7 +46,8 @@
     "prettier-plugin-solidity": "^1.0.0-beta.13",
     "solc-0.8": "npm:solc@0.8.0",
     "solidity-docgen": "^0.5.13",
-    "typechain": "^5.0.0"
+    "typechain": "^5.0.0",
+    "web3": "^1.5.2"
   },
   "prettier": {
     "semi": false

@@ -57,13 +57,11 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
 
     // market wrapper contract exposing interface for
     // market auctioning the NFT
-    address public marketWrapper;
+    address public exchange;
     // NFT contract
     address public nftContract;
     // Fractionalized NFT vault responsible for post-auction value capture
     address public tokenVault;
-    // ID of auction within market contract
-    uint256 public auctionId;
     // ID of token within NFT contract
     uint256 public tokenId;
     // ERC-20 name and symbol for fractional tokens
@@ -88,6 +86,8 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
     // contributor => true if contribution has been claimed
     mapping(address => bool) public claimed;
 
+    IExchangeV2.AssetType public ethAssetType;
+    IExchangeV2.AssetType public nftAssetType;
     // ============ Events ============
 
     event Contributed(
@@ -96,6 +96,8 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         uint256 previousTotalContributedToParty,
         uint256 totalFromContributor
     );
+
+    event Make(address maker, IExchangeV2.AssetType makeAsset, address taker, IExchangeV2.AssetType takeAsset, uint256 salt);
 
     event Bid(uint256 amount);
 
@@ -137,8 +139,8 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         address _nftOwner,
         address _nftContract,
         uint256 _tokenId,
-        AssetType ethAssetType,
-        AssetType nftAssetType,
+        IExchangeV2.AssetType memory _ethAssetType,
+        IExchangeV2.AssetType memory _nftAssetType,
         string memory _name,
         string memory _symbol
     ) external initializer {
@@ -149,7 +151,9 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         exchange = _exchange;
         nftContract = _nftContract;
         tokenId = _tokenId;
-        _nftOwner = _getOwner;
+        ethAssetType = _ethAssetType;
+        nftAssetType = _nftAssetType;
+        _nftOwner = _getOwner();
         name = _name;
         symbol = _symbol;
         // validate token exists
@@ -221,22 +225,29 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
             totalContributed[msg.sender] > 0,
             "PartyRarible::bid: only contributors can bid"
         );
-        Asset makeAsset = Asset(ethAssetType, totalContributedToParty);
-        Asset takeAsset = Asset(nftAssetType, 1);
-        Order order = Order({
+        uint256 _bid = totalContributedToParty;
+        IExchangeV2.Asset memory makeAsset = IExchangeV2.Asset(ethAssetType, _bid);
+        IExchangeV2.Asset memory takeAsset = IExchangeV2.Asset(nftAssetType, 1);
+        bytes4 empty4;
+        bytes memory empty;
+        IExchangeV2.Order memory order = IExchangeV2.Order({
                 maker: address(this),
                 makeAsset: makeAsset,
                 taker: address(0),
                 takeAsset: takeAsset,
-                salt: 0
+                salt: 0,
+                start: 0,
+                end: 0,
+                dataType: empty4,
+                data: empty
             });
-        IExchange(exchange).upsertOrder(order, totalContributedToParty);
+        IExchangeV2(exchange).upsertOrder(order);
         // update highest bid submitted & emit success event
         highestBid = _bid;
-        emit Bid(_bid);
+        emit Make(address(this), makeAsset.assetType, address(0), takeAsset.assetType, 0);
     }
 
-    function take(Order makeOrder, bytes makeSignature) external nonReentrant {
+    function take(IExchangeV2.Order calldata makeOrder, bytes calldata makeSignature) external nonReentrant {
         require(
             partyStatus == PartyStatus.AUCTION_ACTIVE,
             "PartyRarible::bid: auction not active"
@@ -245,22 +256,40 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
             totalContributed[msg.sender] > 0,
             "PartyRarible::bid: only contributors can bid"
         );
-        LibAsset.Asset makeAsset = LibAsset.Asset(nftAssetType, 1);
-        LibAsset.Asset takeAsset = LibAsset.Asset(ethAssetType, totalContributedToParty);
-        Order takeOrder = Order({
+        uint256 _bid = totalContributedToParty;
+        IExchangeV2.Asset memory makeAsset = IExchangeV2.Asset(nftAssetType, 1);
+        IExchangeV2.Asset memory takeAsset = IExchangeV2.Asset(ethAssetType, _bid);
+        bytes4 empty4;
+        bytes memory empty;
+        IExchangeV2.Order memory takeOrder = IExchangeV2.Order({
                 maker: _getOwner(),
                 makeAsset: makeAsset,
                 taker: address(this),
                 takeAsset: takeAsset,
-                salt: 0
+                salt: 0,
+                start: 0,
+                end: 0,
+                dataType: empty4,
+                data: empty
             });
-        bytes takeSignature = abi.encodePacked(0);
-        IExchange(exchange).matchOrders(makeOrder, makeSignature, takeOrder, takeSignature);
+        uint256 zero = 0;
+        bytes memory takeSignature = abi.encodePacked(zero);
+        IExchangeV2(exchange).matchOrders(makeOrder, makeSignature, takeOrder, takeSignature);
         // update highest bid submitted & emit success event
         highestBid = _bid;
         emit Bid(_bid);
     }
     // ======== External: Finalize =========
+
+    bytes4 constant internal MAGICVALUE = 0x1626ba7e;
+    function isValidSignature(
+        bytes32 _hash,
+        bytes memory _signature)
+        public
+        view
+        returns (bytes4 magicValue) {
+        return MAGICVALUE;
+    }
 
     /**
      * @notice Finalize the state of the auction
@@ -272,9 +301,9 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
             "PartyRarible::finalize: auction not active"
         );
         // finalize auction if it hasn't already been done
-        if (!IExchange(exchange).isFinalized(auctionId)) {
-            IExchange(exchange).finalize(auctionId);
-        }
+        // if (!IExchangeV2(exchange).isFinalized(auctionId)) {
+        //     IExchangeV2(exchange).finalize(auctionId);
+        // }
         // after the auction has been finalized,
         // if the NFT is owned by the PartyRarible, then the PartyRarible won the auction
         address _owner = _getOwner();

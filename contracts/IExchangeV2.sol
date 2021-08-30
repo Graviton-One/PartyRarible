@@ -1,6 +1,6 @@
 pragma solidity 0.8.5;
 
-contract IExchangeV2 {
+interface IExchangeV2 {
 
     struct AssetType {
         bytes4 assetClass;
@@ -34,3 +34,5 @@ contract IExchangeV2 {
         Order memory orderRight,
         bytes memory signatureRight
     ) external payable;
+
+}
