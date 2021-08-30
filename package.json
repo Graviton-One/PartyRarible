@@ -30,6 +30,8 @@
     "@rarible/exchange-interfaces": "^0.2.1",
     "@rarible/lazy-mint": "^0.5.3",
     "@rarible/lib-asset": "^0.1.1",
+    "@rarible/protocol-api-client": "^0.1.4",
+    "@rarible/protocol-ethereum-sdk": "^0.1.5",
     "@rarible/royalties": "^0.7.2",
     "@rarible/royalties-upgradeable": "^0.7.2",
     "@rarible/types": "^0.1.7",
