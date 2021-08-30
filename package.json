@@ -1,0 +1,63 @@
+{
+  "name": "@graviton-one/dao-bid",
+  "description": "smart contracts for DAOBid",
+  "license": "",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@types/chai": "^4.2.18",
+    "@types/mocha": "^8.2.2",
+    "@types/node": "^15.0.2",
+    "chai": "^4.3.4",
+    "ethereum-waffle": "^3.3.0",
+    "ethers": "^5.1.4",
+    "hardhat": "^2.2.1",
+    "hardhat-abi-exporter": "^2.2.1",
+    "solidity-coverage": "^0.7.16",
+    "ts-loader": "^8.0.17",
+    "ts-node": "^10.0.0",
+    "typescript": "^4.2.4"
+  },
+  "dependencies": {
+    "@nomiclabs/hardhat-etherscan": "^2.1.2",
+    "@nuxt/types": "^2.15.7",
+    "@nuxt/typescript-build": "^2.1.0",
+    "@openzeppelin/contracts": "4.1.0",
+    "@openzeppelin/contracts-upgradeable": "npm:@openzeppelin/contracts-upgradeable@^3.4.0",
+    "@openzeppelin/contracts-upgradeable2": "npm:@openzeppelin/contracts-upgradeable@^4.1.0",
+    "@openzeppelin/contracts2": "npm:@openzeppelin/contracts@^3.2.0",
+    "@openzeppelin/hardhat-upgrades": "^1.9.0",
+    "@rarible/exchange-interfaces": "^0.2.1",
+    "@rarible/lazy-mint": "^0.5.3",
+    "@rarible/lib-asset": "^0.1.1",
+    "@rarible/royalties": "^0.7.2",
+    "@rarible/royalties-upgradeable": "^0.7.2",
+    "@typechain/ethers-v5": "^7.0.1",
+    "@typechain/hardhat": "^2.0.2",
+    "@types/chai-as-promised": "^7.1.4",
+    "bootstrap": "^5.0.2",
+    "bootstrap-vue": "^2.21.2",
+    "chai-as-promised": "^7.1.1",
+    "dotenv": "^10.0.0",
+    "mocha-chai-jest-snapshot": "^1.1.2",
+    "nuxt": "^2.15.7",
+    "prettier": "^2.3.2",
+    "prettier-plugin-solidity": "^1.0.0-beta.13",
+    "solc-0.8": "npm:solc@0.8.0",
+    "solidity-docgen": "^0.5.13",
+    "typechain": "^5.0.0"
+  },
+  "prettier": {
+    "semi": false
+  },
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "docs": "solidity-docgen --solc-module solc-0.8 -o docs/reference -t ./templates -e contracts/uniswapV2",
+    "dev": "nuxt",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "generate": "nuxt generate"
+  }
+}

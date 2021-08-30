@@ -1,0 +1,17 @@
+#+TITLE: Dao Bid
+
+* happy path
+ 1. initial user deploys NFTDAO contract, receives a number of ERC20 DAO tokens
+ 2. initial distribution of ERC20 DAO tokens
+    a) airdrop shares to users
+    b) let users purchase shares from the contract, price is based on locked ETH value and NFT value
+ 3. DAO members vote to buy an NFT
+ 4. if the vote to buy is successful, NFTDAO deploys a DAOBid contract to join the auction to buy NFT
+ 5. DAO members contribute to DAOBid and compete with other bidders for an NFT
+ 6. if the auction is won, NFTDAO receives the NFT from DAOBid and mints new DAO tokens proportional to auction contributions
+ 7. DAO members vote for the price of each NFT
+ 8. DAO members vote to sell an NFT
+ 9. if the vote to sell is successful, NFTDAO starts an auction to sell
+ 10. bidders compete to buy the NFT, the highest bidder transfers ETH to NFTDAO and receives the NFT
+ 11. NFTDAO uses ETH gained from selling to buy new NFTs
+ 12. DAO members withdraw ETH in exchange for shares, (burns or buybacks)
