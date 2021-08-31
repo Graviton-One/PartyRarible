@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.5;
+pragma abicoder v2;
 
 import {InitializedProxy} from "./InitializedProxy.sol";
 import {PartyRarible, IExchangeV2} from "./PartyRarible.sol";
@@ -80,9 +81,14 @@ contract PartyRaribleFactory {
         IExchangeV2.AssetType calldata _nftAssetType,
         string memory _name,
         string memory _symbol
-    ) external returns (address partyBidProxy) {
-        bytes memory _initializationCalldata = abi.encodeWithSignature(
-            "initialize(address,address,address,uint256,IExchangeV2.AssetType,IExchangeV2.AssetType,string,string)",
+    ) external returns (PartyRarible partyBidProxy) {
+        partyBidProxy = new PartyRarible(
+            partyDAOMultisig,
+            tokenVaultFactory,
+            weth
+        );
+
+        partyBidProxy.initialize(
             _exchange,
             _nftOwner,
             _nftContract,
@@ -92,15 +98,26 @@ contract PartyRaribleFactory {
             _name,
             _symbol
         );
+        // bytes memory _initializationCalldata = abi.encodeWithSignature(
+        //     "initialize(address,address,address,uint256,IExchangeV2.AssetType,IExchangeV2.AssetType,string,string)",
+        //     _exchange,
+        //     _nftOwner,
+        //     _nftContract,
+        //     _tokenId,
+        //     _ethAssetType,
+        //     _nftAssetType,
+        //     _name,
+        //     _symbol
+        // );
 
-        partyBidProxy = address(
-            new InitializedProxy(logic, _initializationCalldata)
-        );
+        // partyBidProxy = address(
+        //     new InitializedProxy(logic, _initializationCalldata)
+        // );
 
-        deployedAt[partyBidProxy] = block.number;
+        deployedAt[address(partyBidProxy)] = block.number;
 
         emit PartyRaribleDeployed(
-            partyBidProxy,
+            address(partyBidProxy),
             msg.sender,
             _exchange,
             _nftOwner,

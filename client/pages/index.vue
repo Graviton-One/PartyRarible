@@ -3,15 +3,48 @@
     <div>
       <div>
         <div>
+          Account: <input v-model="account" placeholder="user address" />
+        </div>
+        <div>
           NFT:
           <input v-model="nftContract" placeholder="ERC721 contract" />
         </div>
         <div>
-          TokenID: <input v-model="tokenId" placeholder="amount Base" />
+          TokenID: <input v-model="tokenID" placeholder="ERC721 token id" />
         </div>
-        <Button class="button--green" size="large" ghost @click="startParty"
-          >Deploy</Button
+        <div>
+          Signature:
+          <input v-model="signature" placeholder="make order signature" />
+        </div>
+        <Button class="button--green" size="large" ghost @click="mint"
+          >Mint</Button
         >
+        <Button class="button--green" size="large" ghost @click="startParty"
+          >Start Party</Button
+        >
+        <Button class="button--green" size="large" ghost @click="update"
+          >Update</Button
+        >
+        <Button class="button--green" size="large" ghost @click="place"
+          >Place</Button
+        >
+        <Button class="button--green" size="large" ghost @click="fill"
+          >Fill</Button
+        >
+        <Button class="button--green" size="large" ghost @click="contribute"
+          >Contribute</Button
+        >
+        <Button class="button--green" size="large" ghost @click="finalize"
+          >Finalize</Button
+        >
+        <Button class="button--green" size="large" ghost @click="claim"
+          >Claim</Button
+        >
+        <div>Party: {{ partyContract }}</div>
+        <div>Vault: {{ tokenVault }}</div>
+        <div>Vault tokens: {{ vaultTokens }}</div>
+        <div>Vault share: {{ vaultShare }}</div>
+        <div>NFT owner: {{ nftOwner }}</div>
         <div>{{ error }}</div>
       </div>
     </div>
@@ -28,23 +61,120 @@ export default Vue.extend({
   data() {
     return {
       invoker: {},
-      nftContract: "",
-      tokenID: "",
+      nftContract: C.nftContract,
+      tokenID: 1,
+      error: "",
+      partyContract: "",
+      account: "",
+      nftOwner: "",
+      signature: "",
+      tokenVault: "",
+      vaultTokens: "",
+      vaultShare: "",
     }
   },
   async mounted() {
     await this.connect()
-    // await this.update()
   },
   methods: {
     async connect() {
       await window.ethereum.enable()
       const provider = new ethers.providers.Web3Provider(window.ethereum)
-      this.invoker = new Invoker()
+      this.invoker = new Invoker(provider)
+      const signer = provider.getSigner()
+      this.account = await signer.getAddress()
       console.log("Invoker loaded:", this.invoker)
     },
+    async update() {
+      try {
+        this.partyTokens = await this.invoker.partyTokens(this.partyContract)
+      } catch (e) {
+        console.log()
+      }
+      try {
+        this.partyShare = await this.invoker.partyShare(
+          this.partyContract,
+          this.account
+        )
+      } catch (e) {
+        console.log()
+      }
+      try {
+        this.nftOwner = await this.invoker.nftOwner(
+          this.nftContract,
+          this.tokenID
+        )
+      } catch (e) {
+        console.log()
+      }
+    },
+    async fill() {
+      try {
+        await this.invoker.fill(
+          this.partyContract,
+          this.amount,
+          this.nftContract,
+          this.tokenID,
+          this.signature
+        )
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async place() {
+      try {
+        await this.invoker.place(this.partyContract)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async contribute() {
+      try {
+        await this.invoker.contribute(this.partyContract, this.amount)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async finalize() {
+      try {
+        this.tokenVault = await this.invoker.finalize(this.partyContract)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async claim() {
+      try {
+        await this.invoker.claim(this.partyContract)
+        await this.update
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async mint() {
+      try {
+        await this.invoker.mint(this.nftContract, this.account, this.tokenID)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
     async startParty() {
-      await invoker.startParty(nftContract, tokenID)
+      try {
+        this.error = "Waiting for deploy..."
+        this.partyContract = await this.invoker.startParty(
+          this.nftContract,
+          this.tokenID
+        )
+        this.error = ""
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
     },
     formatUnits(amount: BigNumber, precision: number): string {
       return ethers.utils.formatUnits(amount, precision)

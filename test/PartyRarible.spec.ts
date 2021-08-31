@@ -15,6 +15,7 @@ import { ERC20TransferProxyTest } from "../typechain/ERC20TransferProxyTest"
 import { ExchangeV2 } from "../typechain/ExchangeV2"
 
 import { PartyRarible } from "../typechain/PartyRarible"
+import { PartyRaribleFactory } from "../typechain/PartyRaribleFactory"
 
 import { Web3Ethereum } from "@rarible/web3-ethereum"
 
@@ -43,7 +44,7 @@ import {
 
 import { Asset, AssetType, Order } from "@rarible/protocol-api-client"
 
-describe.only("PartyRarible", () => {
+describe("PartyRarible", () => {
   const [wallet, other, artistSigner] = waffle.provider.getWallets()
 
   let loadFixture: ReturnType<typeof waffle.createFixtureLoader>
