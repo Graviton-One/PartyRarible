@@ -2,15 +2,30 @@ import Web3 from "web3"
 import {
   toAddress,
   toBigNumber,
+  Binary,
   toBinary,
   randomWord,
   ZERO_ADDRESS,
+  Address,
   toWord,
+  BigNumber as BN,
 } from "@rarible/types"
-import { Asset, AssetType, Order } from "@rarible/protocol-api-client"
+import {
+  Asset,
+  AssetType,
+  Order,
+  EIP712Domain,
+} from "@rarible/protocol-api-client"
 import { OrderData } from "@rarible/protocol-api-client/build/models/OrderData"
+import { Web3Ethereum } from "@rarible/web3-ethereum"
+import { Ethereum, signTypedData } from "@rarible/ethereum-provider"
 const abi = new Web3().eth.abi
 
+const ASSET = {
+  token: "address",
+  tokenId: "uint256",
+  assetType: "uint8",
+}
 export function assetTypeToStruct(assetType: AssetType) {
   switch (assetType.assetClass) {
     case "ETH":
@@ -299,4 +314,182 @@ const DATA_V1_TYPE = {
   ],
   name: "data",
   type: "tuple",
+}
+
+export async function signOrder(
+  ethereum: Ethereum,
+  config: Pick<Config, "exchange" | "chainId">,
+  order: SimpleOrder
+): Promise<Binary> {
+  switch (order.type) {
+    case "RARIBLE_V1": {
+      const legacyHash = hashLegacyOrder(order)
+      return toBinary(await ethereum.personalSign(legacyHash.substring(2)))
+    }
+    case "RARIBLE_V2": {
+      const domain = createEIP712Domain(config.chainId, config.exchange.v2)
+      const signature = await signTypedData(ethereum, {
+        primaryType: EIP712_ORDER_TYPE,
+        domain,
+        types: EIP712_ORDER_TYPES,
+        message: orderToStruct(order),
+      })
+      return toBinary(signature)
+    }
+    default: {
+      throw new Error(`Unsupported order type: ${order.type}`)
+    }
+  }
+}
+
+export const EIP712_ORDER_NAME = "Exchange"
+
+export const EIP712_ORDER_VERSION = "2"
+
+export const EIP712_ORDER_TYPE = "Order"
+
+export const EIP712_DOMAIN_TEMPLATE = {
+  name: EIP712_ORDER_NAME,
+  version: EIP712_ORDER_VERSION,
+}
+
+export const EIP712_ORDER_TYPES = {
+  EIP712Domain: [
+    { type: "string", name: "name" },
+    { type: "string", name: "version" },
+    { type: "uint256", name: "chainId" },
+    { type: "address", name: "verifyingContract" },
+  ],
+  AssetType: [
+    { name: "assetClass", type: "bytes4" },
+    { name: "data", type: "bytes" },
+  ],
+  Asset: [
+    { name: "assetType", type: "AssetType" },
+    { name: "value", type: "uint256" },
+  ],
+  Order: [
+    { name: "maker", type: "address" },
+    { name: "makeAsset", type: "Asset" },
+    { name: "taker", type: "address" },
+    { name: "takeAsset", type: "Asset" },
+    { name: "salt", type: "uint256" },
+    { name: "start", type: "uint256" },
+    { name: "end", type: "uint256" },
+    { name: "dataType", type: "bytes4" },
+    { name: "data", type: "bytes" },
+  ],
+}
+
+function createEIP712Domain(
+  chainId: number,
+  verifyingContract: Address
+): EIP712Domain {
+  return {
+    ...EIP712_DOMAIN_TEMPLATE,
+    verifyingContract: verifyingContract,
+    chainId,
+  }
+}
+
+export function hashLegacyOrder(order: SimpleOrder): string {
+  if (order.type !== "RARIBLE_V1") {
+    throw new Error(`Not supported type: ${order.type}`)
+  }
+  const data = order.data
+  if (data.dataType !== "LEGACY") {
+    throw new Error(`Not supported data type: ${data.dataType}`)
+  }
+
+  const makeType = toLegacyAssetType(order.make.assetType)
+  const takeType = toLegacyAssetType(order.take.assetType)
+
+  const struct = {
+    key: {
+      owner: order.maker,
+      salt: order.salt,
+      sellAsset: makeType,
+      buyAsset: takeType,
+    },
+    selling: order.make.value,
+    buying: order.take.value,
+    sellerFee: data.fee,
+  }
+
+  return Web3.utils.sha3(
+    abi.encodeParameter({ Order: ORDER }, struct)
+  ) as string
+}
+
+export function toLegacyAssetType(assetType: AssetType): LegacyAssetType {
+  switch (assetType.assetClass) {
+    case "ETH":
+      return {
+        assetType: 0,
+        token: ZERO_ADDRESS,
+        tokenId: toBigNumber("0"),
+      }
+    case "ERC20":
+      return {
+        assetType: 1,
+        token: assetType.contract,
+        tokenId: toBigNumber("0"),
+      }
+    case "ERC721":
+      return {
+        assetType: 3,
+        token: assetType.contract,
+        tokenId: assetType.tokenId,
+      }
+    case "ERC1155":
+      return {
+        assetType: 2,
+        token: assetType.contract,
+        tokenId: assetType.tokenId,
+      }
+    default: {
+      throw new Error("Unsupported")
+    }
+  }
+}
+
+const ORDER = {
+  key: {
+    owner: "address",
+    salt: "uint256",
+    sellAsset: ASSET,
+    buyAsset: ASSET,
+  },
+  selling: "uint256",
+  buying: "uint256",
+  sellerFee: "uint256",
+}
+type LegacyAssetType = {
+  assetType: number
+  token: Address
+  tokenId: BN
+}
+
+export type Config = {
+  basePath: string
+  chainId: number
+  exchange: ExchangeAddresses
+  transferProxies: TransferProxies
+  fees: ExchangeFees
+}
+
+export type ExchangeFees = {
+  v2: number
+}
+
+export type ExchangeAddresses = {
+  v1: Address
+  v2: Address
+}
+
+export type TransferProxies = {
+  nft: Address
+  erc20: Address
+  erc721Lazy: Address
+  erc1155Lazy: Address
 }

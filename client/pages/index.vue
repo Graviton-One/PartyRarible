@@ -2,6 +2,9 @@
   <div class="container">
     <div>
       <div>
+        <Button class="button--green" size="large" ghost @click="update"
+          >Update</Button
+        >
         <div>
           Account: <input v-model="account" placeholder="user address" />
         </div>
@@ -13,8 +16,20 @@
           TokenID: <input v-model="tokenID" placeholder="ERC721 token id" />
         </div>
         <div>
+          Amount:
+          <input v-model="amount" placeholder="amount" />
+        </div>
+        <div>
           Signature:
           <input v-model="signature" placeholder="make order signature" />
+        </div>
+        <div>
+          Party:
+          <input v-model="party" placeholder="party address (save it)" />
+        </div>
+        <div>
+          Vault:
+          <input v-model="tokenVault" placeholder="vault address (save it)" />
         </div>
         <Button class="button--green" size="large" ghost @click="mint"
           >Mint</Button
@@ -22,25 +37,28 @@
         <Button class="button--green" size="large" ghost @click="startParty"
           >Start Party</Button
         >
-        <Button class="button--green" size="large" ghost @click="update"
-          >Update</Button
-        >
-        <Button class="button--green" size="large" ghost @click="place"
-          >Place</Button
-        >
-        <Button class="button--green" size="large" ghost @click="fill"
-          >Fill</Button
-        >
         <Button class="button--green" size="large" ghost @click="contribute"
-          >Contribute</Button
+          >Contribute to DAO</Button
+        >
+        <Button class="button--green" size="large" ghost @click="placeNFT"
+          >Place NFT</Button
+        >
+        <Button class="button--green" size="large" ghost @click="fillETH"
+          >Fill ETH as DAO</Button
+        >
+        <Button class="button--green" size="large" ghost @click="placeETH"
+          >Place ETH as DAO</Button
+        >
+        <Button class="button--green" size="large" ghost @click="fillNFT"
+          >Fill NFT</Button
         >
         <Button class="button--green" size="large" ghost @click="finalize"
-          >Finalize</Button
+          >Try to finalize</Button
         >
         <Button class="button--green" size="large" ghost @click="claim"
-          >Claim</Button
+          >Claim tokens</Button
         >
-        <div>Party: {{ partyContract }}</div>
+        <div>Party: {{ party }}</div>
         <div>Vault: {{ tokenVault }}</div>
         <div>Vault tokens: {{ vaultTokens }}</div>
         <div>Vault share: {{ vaultShare }}</div>
@@ -64,13 +82,14 @@ export default Vue.extend({
       nftContract: C.nftContract,
       tokenID: 1,
       error: "",
-      partyContract: "",
+      party: "",
       account: "",
       nftOwner: "",
       signature: "",
       tokenVault: "",
       vaultTokens: "",
       vaultShare: "",
+      amount: "",
     }
   },
   async mounted() {
@@ -80,20 +99,21 @@ export default Vue.extend({
     async connect() {
       await window.ethereum.enable()
       const provider = new ethers.providers.Web3Provider(window.ethereum)
-      this.invoker = new Invoker(provider)
+      const web3 = new Web3(window.ethereum)
+      this.invoker = new Invoker(provider, web3)
       const signer = provider.getSigner()
       this.account = await signer.getAddress()
       console.log("Invoker loaded:", this.invoker)
     },
     async update() {
       try {
-        this.partyTokens = await this.invoker.partyTokens(this.partyContract)
+        this.partyTokens = await this.invoker.partyTokens(this.party)
       } catch (e) {
         console.log()
       }
       try {
         this.partyShare = await this.invoker.partyShare(
-          this.partyContract,
+          this.party,
           this.account
         )
       } catch (e) {
@@ -108,10 +128,18 @@ export default Vue.extend({
         console.log()
       }
     },
-    async fill() {
+    async fillNFT() {
       try {
-        await this.invoker.fill(
-          this.partyContract,
+        await this.invoker.fillNFT(this.nftContract, this.tokenID, this.amount)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async fillETH() {
+      try {
+        await this.invoker.fillETH(
+          this.party,
           this.amount,
           this.nftContract,
           this.tokenID,
@@ -122,9 +150,17 @@ export default Vue.extend({
         console.log(e)
       }
     },
-    async place() {
+    async placeNFT() {
       try {
-        await this.invoker.place(this.partyContract)
+        await this.invoker.placeNFT(this.nftContract, this.tokenID, this.amount)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async placeETH() {
+      try {
+        await this.invoker.placeETH(this.party)
       } catch (e) {
         this.error = e
         console.log(e)
@@ -132,7 +168,7 @@ export default Vue.extend({
     },
     async contribute() {
       try {
-        await this.invoker.contribute(this.partyContract, this.amount)
+        await this.invoker.contribute(this.party, this.amount)
       } catch (e) {
         this.error = e
         console.log(e)
@@ -140,7 +176,7 @@ export default Vue.extend({
     },
     async finalize() {
       try {
-        this.tokenVault = await this.invoker.finalize(this.partyContract)
+        this.tokenVault = await this.invoker.finalize(this.party)
       } catch (e) {
         this.error = e
         console.log(e)
@@ -148,7 +184,7 @@ export default Vue.extend({
     },
     async claim() {
       try {
-        await this.invoker.claim(this.partyContract)
+        await this.invoker.claim(this.party)
         await this.update
       } catch (e) {
         this.error = e
@@ -166,7 +202,7 @@ export default Vue.extend({
     async startParty() {
       try {
         this.error = "Waiting for deploy..."
-        this.partyContract = await this.invoker.startParty(
+        this.party = await this.invoker.startParty(
           this.nftContract,
           this.tokenID
         )
