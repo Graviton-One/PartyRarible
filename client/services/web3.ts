@@ -43,7 +43,7 @@ import {
 } from "@rarible/types"
 import { Asset, AssetType, Order } from "@rarible/protocol-api-client"
 
-import { C } from "./constants"
+import { PLG, RKB } from "./constants"
 
 export default class Invoker {
   metamask: ethers.providers.Web3Provider
@@ -54,7 +54,7 @@ export default class Invoker {
     this.signer = _metamask.getSigner()
     this.web3 = _web3
   }
-  async placeNFT(nft: string, id: string, amount: string) {
+  async placeNFT(exchange: string, nft: string, id: string, amount: string) {
     const nftContract = new ethers.Contract(
       nft,
       TestERC721ABI,
@@ -62,8 +62,8 @@ export default class Invoker {
     ) as TestERC721
     const owner = await nftContract.ownerOf(id)
 
-    const exchange = new ethers.Contract(
-      C.exchange,
+    const exchangeContract = new ethers.Contract(
+      exchange,
       ExchangeV2ABI,
       this.signer
     ) as ExchangeV2
@@ -93,12 +93,21 @@ export default class Invoker {
       },
     }
 
-    await exchange.upsertOrder(orderToStruct(makeOrder))
+    await exchangeContract.upsertOrder(orderToStruct(makeOrder))
   }
-  async fillNFT(party: string, nft: string, id: string, amount: string) {
+  async fillNFT(
+    transferProxy: string,
+    exchange: string,
+    party: string,
+    nft: string,
+    id: string,
+    amount: string
+  ) {
     const signerAddress = await this.signer.getAddress()
-    const network = await this.metamask.getNetwork()
-    const chainId = network.chainId
+
+    // const network = await this.metamask.getNetwork()
+    // const chainId = network.chainId
+    const chainId = 1
 
     const nftContract = new ethers.Contract(
       nft,
@@ -107,10 +116,10 @@ export default class Invoker {
     ) as TestERC721
     const owner = await nftContract.ownerOf(id)
 
-    await nftContract.setApprovalForAll(C.transferProxy, true)
+    await nftContract.setApprovalForAll(transferProxy, true)
 
-    const exchange = new ethers.Contract(
-      C.exchange,
+    const exchangeContract = new ethers.Contract(
+      exchange,
       ExchangeV2ABI,
       this.signer
     ) as ExchangeV2
@@ -175,14 +184,14 @@ export default class Invoker {
       {
         chainId: chainId,
         exchange: {
-          v1: toAddress(C.exchange),
-          v2: toAddress(C.exchange),
+          v1: toAddress(exchange),
+          v2: toAddress(exchange),
         },
       },
       right
     )
 
-    await exchange.matchOrders(
+    await exchangeContract.matchOrders(
       orderToStruct(left),
       signature,
       orderToStruct(right),
@@ -233,7 +242,7 @@ export default class Invoker {
     }
     await partyContract.fill(orderToStruct(makeOrder), signature)
   }
-  async placeETH(party: string) {
+  async placeETH(partyFactory: string, exchange: string, party: string) {
     const partyContract = new ethers.Contract(
       party,
       PartyRaribleABI,
@@ -294,7 +303,12 @@ export default class Invoker {
     const owner = await nftContract.ownerOf(id)
     return owner
   }
-  async mint(nft: string, to: string, id: string): Promise<string> {
+  async mint(
+    exchange: string,
+    nft: string,
+    to: string,
+    id: string
+  ): Promise<string> {
     const nftContract = new ethers.Contract(
       nft,
       TestERC721ABI,
@@ -303,9 +317,14 @@ export default class Invoker {
     const bal = await nftContract.mint(to, id)
     return bal.toString()
   }
-  async startParty(nft: string, id: string): Promise<string> {
-    const partyFactory = new ethers.Contract(
-      C.partyFactory,
+  async startParty(
+    exchange: string,
+    partyFactory: string,
+    nft: string,
+    id: string
+  ): Promise<string> {
+    const partyFactoryContract = new ethers.Contract(
+      partyFactory,
       PartyRaribleFactoryABI,
       this.signer
     ) as PartyRaribleFactory
@@ -320,8 +339,8 @@ export default class Invoker {
       tokenId: toBigNumber(id),
     }
     const signerAddress = await this.signer.getAddress()
-    const tx = await partyFactory.startParty(
-      C.exchange,
+    const tx = await partyFactoryContract.startParty(
+      exchange,
       signerAddress,
       nft,
       id,

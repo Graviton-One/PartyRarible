@@ -1,6 +1,6 @@
 #+TITLE: PartyRarible
 
-PartyRarible allows to trade with your friends on Rarible and fractionalize the NFT in proportion to contributions.
+PartyRarible allows a group of internet homies to pool their funds together in order to buy an NFT on Rarible, then fractionalizes the NFT and returns fractions to the users in proportions to their contributions.
 
 Thanks to awesome PartyBid and Rarible protocols. Uses [[https://github.com/rarible/protocol-contracts/tree/feature/onchain_order_book][feature/onchain_order_book]] of Rarible contracts repo.
 
@@ -26,3 +26,28 @@ https://polygonscan.com/address/0x7ceb23fd6bc0add59e62ac25578270cff1b9f619
 
 test ERC721
 https://polygonscan.com/address/0x8d712f350A55D65427EfcE56Ec6a36fef28e8Ac9
+
+** Rinkeby
+PartyRaribleFactory
+https://rinkeby.etherscan.io/address/0x38bbcA20af927208C15eb740a3F70E7c4AC80c61
+
+Rarible ExchangeV2
+https://rinkeby.etherscan.io/address/0x12e0AA009024C5e6D1b12F677E2cD99A2284080a
+
+erc20 proxy
+https://rinkeby.etherscan.io/address/0x0dc7f26FE9C3e07dd3650eCa942cbBb53093d860
+
+nft proxy
+https://rinkeby.etherscan.io/address/0x9a0B9184c65E508344D2A75adaED4a73Ce2Cd256
+
+weth
+https://rinkeby.etherscan.io/address/0xdf032bc4b9dc2782bb09352007d4c57b75160b15
+
+vault factory
+https://rinkeby.etherscan.io/address/0x458556c097251f52ca89cB81316B4113aC734BD1
+
+settings
+https://rinkeby.etherscan.io/address/0x1C0857f8642D704ecB213A752A3f68E51913A779
+
+testERC721
+https://rinkeby.etherscan.io/address/0x053F7Dc4c2BC0bA064071E1B6D080df4F0AA46f9

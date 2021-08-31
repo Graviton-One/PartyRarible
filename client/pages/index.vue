@@ -5,6 +5,7 @@
         <Button class="button--green" size="large" ghost @click="update"
           >Update</Button
         >
+        <div>Chain: {{ chain }}</div>
         <div>
           Account: <input v-model="account" placeholder="user address" />
         </div>
@@ -73,13 +74,13 @@
 import Vue from "vue"
 import { ethers, BigNumber } from "ethers"
 import Invoker from "../services/web3.ts"
-import { C } from "../services/constants.ts"
+import { PLG, RKB } from "../services/constants.ts"
 
 export default Vue.extend({
   data() {
     return {
       invoker: {},
-      nftContract: C.nftContract,
+      nftContract: PLG.nftContract,
       tokenID: 1,
       error: "",
       party: "",
@@ -90,6 +91,8 @@ export default Vue.extend({
       vaultTokens: "",
       vaultShare: "",
       amount: "",
+      chain: "",
+      c: PLG,
     }
   },
   async mounted() {
@@ -99,6 +102,15 @@ export default Vue.extend({
     async connect() {
       await window.ethereum.enable()
       const provider = new ethers.providers.Web3Provider(window.ethereum)
+      const network = await provider.getNetwork()
+      const chainID = network.chainID
+      if (chainID == 137) {
+        chain = "PLG"
+        c = PLG
+      } else if (chainID == 4) {
+        chain = "RKB"
+        c = RKB
+      }
       const web3 = new Web3(window.ethereum)
       this.invoker = new Invoker(provider, web3)
       const signer = provider.getSigner()
