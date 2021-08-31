@@ -7,6 +7,8 @@ PartyRarible allows a group of internet homies to pool their funds together in o
 
 Thanks to the awesome Rarible, PartyBid and Fractional protocols. We use [[https://github.com/rarible/protocol-contracts/tree/feature/onchain_order_book][feature/onchain_order_book]] of the Rarible contracts repo.
 
+https://party-rarible.netlify.app/
+
 ** test cases
  - start a public bidding party for an NFT
  - contribute ETH to the contract
