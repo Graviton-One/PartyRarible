@@ -5,8 +5,15 @@ GalleryDAO builds on code of PartyBid - smart contracts for collaborative biddin
 
 PartyRarible allows a group of internet homies to pool their funds together in order to buy an NFT on Rarible, then fractionalize the NFT and return fractions to the users in proportions to their contributions.
 
-Thanks to awesome PartyBid and Rarible protocols. Uses [[https://github.com/rarible/protocol-contracts/tree/feature/onchain_order_book][feature/onchain_order_book]] of Rarible contracts repo.
+Thanks to the awesome Rarible, PartyBid and Fractional protocols. We use [[https://github.com/rarible/protocol-contracts/tree/feature/onchain_order_book][feature/onchain_order_book]] of the Rarible contracts repo.
 
+** test cases
+ - start a public bidding party for an NFT
+ - contribute ETH to the contract
+ - (option 1) fill an open NFT make order with ETH stored on the contract
+ - (option 2) open an onchain make order of accumulated ETH and wait until a taker fills it with NFT
+ - when the bidding contract receives NFT, fractionalize it and send fractions to the members propotional to their contributions
+ - following the Fractional protocol, fractions are used to withdraw ETH after the NFT is sold at profit. Fractions can also be traded on the market until a single account collets them all and redeems the NFT.
 #+begin_src sh
 yarn
 yarn run hardhat compile
