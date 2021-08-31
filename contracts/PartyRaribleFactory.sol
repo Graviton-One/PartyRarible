@@ -33,6 +33,9 @@ contract PartyRaribleFactory {
     // PartyBid proxy => block number deployed at
     mapping(address => uint256) public deployedAt;
 
+    uint256 public totalProxies;
+    mapping(uint256 => address) public proxies;
+
     //======== Constructor =========
 
     constructor(
@@ -100,6 +103,8 @@ contract PartyRaribleFactory {
         );
 
         deployedAt[address(partyBidProxy)] = block.number;
+        proxies[totalProxies] = address(partyBidProxy);
+        totalProxies++;
 
         emit PartyRaribleDeployed(
             address(partyBidProxy),

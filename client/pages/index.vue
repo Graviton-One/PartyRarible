@@ -79,7 +79,7 @@ export default Vue.extend({
     return {
       invoker: {},
       provider: {},
-      nftContract: PLG.nftContract,
+      nftContract: RKB.nftContract,
       tokenID: "1",
       error: "",
       party: "",
@@ -91,7 +91,7 @@ export default Vue.extend({
       vaultShare: "",
       amount: "",
       chain: "",
-      c: PLG,
+      c: RKB,
     }
   },
   async mounted() {
@@ -140,12 +140,33 @@ export default Vue.extend({
         console.log()
       }
     },
-    async fillNFT() {
+    async startParty() {
       try {
-        await this.invoker.fillNFT(
-          this.c.transferProxy,
+        this.error = "Waiting for deploy..."
+        this.party = await this.invoker.startParty(
           this.c.exchange,
-          this.party,
+          this.c.partyFactory,
+          this.nftContract,
+          this.tokenID
+        )
+        this.error = ""
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async contribute() {
+      try {
+        await this.invoker.contribute(this.party, this.amount)
+      } catch (e) {
+        this.error = e
+        console.log(e)
+      }
+    },
+    async placeNFT() {
+      try {
+        this.signature = await this.invoker.placeNFT(
+          this.c.exchange,
           this.nftContract,
           this.tokenID,
           this.amount
@@ -169,19 +190,6 @@ export default Vue.extend({
         console.log(e)
       }
     },
-    async placeNFT() {
-      try {
-        await this.invoker.placeNFT(
-          this.c.exchange,
-          this.nftContract,
-          this.tokenID,
-          this.amount
-        )
-      } catch (e) {
-        this.error = e
-        console.log(e)
-      }
-    },
     async placeETH() {
       try {
         await this.invoker.placeETH(this.party)
@@ -190,9 +198,16 @@ export default Vue.extend({
         console.log(e)
       }
     },
-    async contribute() {
+    async fillNFT() {
       try {
-        await this.invoker.contribute(this.party, this.amount)
+        this.signature = await this.invoker.fillNFT(
+          this.c.transferProxy,
+          this.c.exchange,
+          this.party,
+          this.nftContract,
+          this.tokenID,
+          this.amount
+        )
       } catch (e) {
         this.error = e
         console.log(e)
@@ -218,21 +233,6 @@ export default Vue.extend({
     async mint() {
       try {
         await this.invoker.mint(this.nftContract, this.account, this.tokenID)
-      } catch (e) {
-        this.error = e
-        console.log(e)
-      }
-    },
-    async startParty() {
-      try {
-        this.error = "Waiting for deploy..."
-        this.party = await this.invoker.startParty(
-          this.c.exchange,
-          this.c.partyFactory,
-          this.nftContract,
-          this.tokenID
-        )
-        this.error = ""
       } catch (e) {
         this.error = e
         console.log(e)

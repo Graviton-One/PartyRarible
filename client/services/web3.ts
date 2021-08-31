@@ -54,7 +54,78 @@ export default class Invoker {
     this.signer = _metamask.getSigner()
     this.web3 = _web3
   }
-  async placeNFT(exchange: string, nft: string, id: string, amount: string) {
+
+  async mint(nft: string, to: string, id: string): Promise<string> {
+    const nftContract = new ethers.Contract(
+      nft,
+      TestERC721ABI,
+      this.signer
+    ) as TestERC721
+    const bal = await nftContract.mint(to, id)
+    return bal.toString()
+  }
+
+  async startParty(
+    exchange: string,
+    partyFactory: string,
+    nft: string,
+    id: string
+  ): Promise<string> {
+    const partyFactoryContract = new ethers.Contract(
+      partyFactory,
+      PartyRaribleFactoryABI,
+      this.signer
+    ) as PartyRaribleFactory
+
+    const ethAssetType: AssetType = {
+      assetClass: "ETH",
+    }
+    const nftAssetType: AssetType = {
+      assetClass: "ERC721",
+      contract: toAddress(nft),
+      tokenId: toBigNumber(id),
+    }
+
+    const signerAddress = await this.signer.getAddress()
+
+    const totalProxies = await await partyFactoryContract.totalProxies()
+    const tx = await partyFactoryContract.startParty(
+      exchange,
+      signerAddress,
+      nft,
+      id,
+      assetTypeToStruct(ethAssetType),
+      assetTypeToStruct(nftAssetType),
+      "Rarible Party",
+      "RBLP"
+    )
+    const receipt = await tx.wait()
+    console.log(receipt.logs[0])
+    const log = receipt.logs[0]
+
+    return await partyFactoryContract.proxies(totalProxies)
+  }
+
+  async contribute(party: string, amount: string) {
+    const partyContract = new ethers.Contract(
+      party,
+      PartyRaribleABI,
+      this.signer
+    ) as PartyRarible
+    await partyContract.contribute({ value: amount })
+  }
+  async placeNFT(
+    exchange: string,
+    nft: string,
+    id: string,
+    amount: string
+  ): Promise<string> {
+    const signerAddress = await this.signer.getAddress()
+
+    const network = await this.metamask.getNetwork()
+    const chainId = network.chainId
+
+    console.log(exchange, nft, id, amount, chainId)
     const nftContract = new ethers.Contract(
       nft,
       TestERC721ABI,
@@ -93,7 +164,83 @@ export default class Invoker {
       },
     }
 
+    const ethereum2 = new Web3Ethereum({
+      web3: this.web3,
+      from: toAddress(signerAddress),
+      gas: 1000000,
+    })
+
+    const signature = await signOrder(
+      ethereum2,
+      {
+        chainId: chainId,
+        exchange: {
+          v1: toAddress(exchange),
+          v2: toAddress(exchange),
+        },
+      },
+      makeOrder
+    )
+    console.log(signature)
+
     await exchangeContract.upsertOrder(orderToStruct(makeOrder))
+
+    return signature
+  }
+  async fillETH(
+    party: string,
+    amount: string,
+    nft: string,
+    id: string,
+    signature: string
+  ) {
+    const signerAddress = await this.signer.getAddress()
+    const nftContract = new ethers.Contract(
+      nft,
+      TestERC721ABI,
+      this.signer
+    ) as TestERC721
+    const owner = await nftContract.ownerOf(id)
+    const partyContract = new ethers.Contract(
+      party,
+      PartyRaribleABI,
+      this.signer
+    ) as PartyRarible
+
+    const makeOrder: SimpleOrder = {
+      make: {
+        assetType: {
+          assetClass: "ERC721",
+          contract: toAddress(nft),
+          tokenId: toBigNumber(id),
+        },
+        value: toBigNumber("1"),
+      },
+      maker: toAddress(owner),
+      take: {
+        assetType: {
+          assetClass: "ETH",
+        },
+        value: toBigNumber(amount),
+      },
+      salt: randomWord(),
+      type: "RARIBLE_V2",
+      data: {
+        dataType: "RARIBLE_V2_DATA_V1",
+        payouts: [],
+        originFees: [],
+      },
+    }
+
+    await partyContract.fill(orderToStruct(makeOrder), signature)
+  }
+  async placeETH(party: string) {
+    const partyContract = new ethers.Contract(
+      party,
+      PartyRaribleABI,
+      this.signer
+    ) as PartyRarible
+    await partyContract.place()
   }
   async fillNFT(
     transferProxy: string,
@@ -102,12 +249,11 @@ export default class Invoker {
     nft: string,
     id: string,
     amount: string
-  ) {
+  ): Promise<string> {
     const signerAddress = await this.signer.getAddress()
 
-    // const network = await this.metamask.getNetwork()
-    // const chainId = network.chainId
-    const chainId = 1
+    const network = await this.metamask.getNetwork()
+    const chainId = network.chainId
 
     const nftContract = new ethers.Contract(
       nft,
@@ -173,6 +319,7 @@ export default class Invoker {
         originFees: [],
       },
     }
+
     const ethereum2 = new Web3Ethereum({
       web3: this.web3,
       from: toAddress(signerAddress),
@@ -191,73 +338,18 @@ export default class Invoker {
       right
     )
 
+    console.log(signature)
+
     await exchangeContract.matchOrders(
       orderToStruct(left),
       signature,
       orderToStruct(right),
       signature
     )
+
+    return signature
   }
-  async fillETH(
-    party: string,
-    amount: string,
-    nft: string,
-    id: string,
-    signature: string
-  ) {
-    const nftContract = new ethers.Contract(
-      nft,
-      TestERC721ABI,
-      this.signer
-    ) as TestERC721
-    const owner = await nftContract.ownerOf(id)
-    const partyContract = new ethers.Contract(
-      party,
-      PartyRaribleABI,
-      this.signer
-    ) as PartyRarible
-    const makeOrder: SimpleOrder = {
-      make: {
-        assetType: {
-          assetClass: "ERC721",
-          contract: toAddress(nft),
-          tokenId: toBigNumber(id),
-        },
-        value: toBigNumber("1"),
-      },
-      maker: toAddress(owner),
-      take: {
-        assetType: {
-          assetClass: "ETH",
-        },
-        value: toBigNumber(amount),
-      },
-      salt: randomWord(),
-      type: "RARIBLE_V2",
-      data: {
-        dataType: "RARIBLE_V2_DATA_V1",
-        payouts: [],
-        originFees: [],
-      },
-    }
-    await partyContract.fill(orderToStruct(makeOrder), signature)
-  }
-  async placeETH(partyFactory: string, exchange: string, party: string) {
-    const partyContract = new ethers.Contract(
-      party,
-      PartyRaribleABI,
-      this.signer
-    ) as PartyRarible
-    await partyContract.place()
-  }
-  async contribute(party: string, amount: string) {
-    const partyContract = new ethers.Contract(
-      party,
-      PartyRaribleABI,
-      this.signer
-    ) as PartyRarible
-    await partyContract.contribute({ value: amount })
-  }
+
   async finalize(party: string) {
     const partyContract = new ethers.Contract(
       party,
@@ -302,54 +394,5 @@ export default class Invoker {
     ) as TestERC721
     const owner = await nftContract.ownerOf(id)
     return owner
-  }
-  async mint(nft: string, to: string, id: string): Promise<string> {
-    const nftContract = new ethers.Contract(
-      nft,
-      TestERC721ABI,
-      this.signer
-    ) as TestERC721
-    const bal = await nftContract.mint(to, id)
-    return bal.toString()
-  }
-  async startParty(
-    exchange: string,
-    partyFactory: string,
-    nft: string,
-    id: string
-  ): Promise<string> {
-    const partyFactoryContract = new ethers.Contract(
-      partyFactory,
-      PartyRaribleFactoryABI,
-      this.signer
-    ) as PartyRaribleFactory
-
-    const ethAssetType: AssetType = {
-      assetClass: "ETH",
-    }
-    const nftAssetType: AssetType = {
-      assetClass: "ERC721",
-      contract: toAddress(nft),
-      tokenId: toBigNumber(id),
-    }
-
-    const signerAddress = await this.signer.getAddress()
-
-    const tx = await partyFactoryContract.startParty(
-      exchange,
-      signerAddress,
-      nft,
-      id,
-      assetTypeToStruct(ethAssetType),
-      assetTypeToStruct(nftAssetType),
-      "Rarible Party",
-      "RBLP"
-    )
-    const receipt = await tx.wait()
-    console.log(receipt.logs[0])
-    const log = receipt.logs[0]
-
-    const addr = "0x" + ethers.utils.hexDataSlice(log.data, 12, 32)
-    return addr
   }
 }

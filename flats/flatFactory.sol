@@ -1218,6 +1218,9 @@ contract PartyRaribleFactory {
     // PartyBid proxy => block number deployed at
     mapping(address => uint256) public deployedAt;
 
+    uint256 public totalProxies;
+    mapping(uint256 => address) public proxies;
+
     //======== Constructor =========
 
     constructor(
@@ -1266,9 +1269,14 @@ contract PartyRaribleFactory {
         IExchangeV2.AssetType calldata _nftAssetType,
         string memory _name,
         string memory _symbol
-    ) external returns (address partyBidProxy) {
-        bytes memory _initializationCalldata = abi.encodeWithSignature(
-            "initialize(address,address,address,uint256,IExchangeV2.AssetType,IExchangeV2.AssetType,string,string)",
+    ) external returns (PartyRarible partyBidProxy) {
+        partyBidProxy = new PartyRarible(
+            partyDAOMultisig,
+            tokenVaultFactory,
+            weth
+        );
+
+        partyBidProxy.initialize(
             _exchange,
             _nftOwner,
             _nftContract,
@@ -1279,14 +1287,12 @@ contract PartyRaribleFactory {
             _symbol
         );
 
-        partyBidProxy = address(
-            new InitializedProxy(logic, _initializationCalldata)
-        );
-
-        deployedAt[partyBidProxy] = block.number;
+        deployedAt[address(partyBidProxy)] = block.number;
+        proxies[totalProxies] = address(partyBidProxy);
+        totalProxies++;
 
         emit PartyRaribleDeployed(
-            partyBidProxy,
+            address(partyBidProxy),
             msg.sender,
             _exchange,
             _nftOwner,
