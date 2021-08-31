@@ -1,6 +1,9 @@
 #+TITLE: PartyRarible
 
-PartyRarible allows a group of internet homies to pool their funds together in order to buy an NFT on Rarible, then fractionalizes the NFT and returns fractions to the users in proportions to their contributions.
+GalleryDAO is a solution for NFT index management - DAO members purchase and sell NFT together, and gain DAO shares propotional to their participation in the auctions.
+GalleryDAO builds on code of PartyBid - smart contracts for collaborative bidding and fractionalization. As part of development we've build a fractionalization solution for Rarible.
+
+PartyRarible allows a group of internet homies to pool their funds together in order to buy an NFT on Rarible, then fractionalize the NFT and return fractions to the users in proportions to their contributions.
 
 Thanks to awesome PartyBid and Rarible protocols. Uses [[https://github.com/rarible/protocol-contracts/tree/feature/onchain_order_book][feature/onchain_order_book]] of Rarible contracts repo.
 
