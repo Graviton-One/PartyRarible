@@ -59,8 +59,6 @@
         <Button class="button--green" size="large" ghost @click="claim"
           >Claim tokens</Button
         >
-        <div>Party: {{ party }}</div>
-        <div>Vault: {{ tokenVault }}</div>
         <div>Vault tokens: {{ vaultTokens }}</div>
         <div>Vault share: {{ vaultShare }}</div>
         <div>NFT owner: {{ nftOwner }}</div>
@@ -80,8 +78,9 @@ export default Vue.extend({
   data() {
     return {
       invoker: {},
+      provider: {},
       nftContract: PLG.nftContract,
-      tokenID: 1,
+      tokenID: "1",
       error: "",
       party: "",
       account: "",
@@ -97,28 +96,29 @@ export default Vue.extend({
   },
   async mounted() {
     await this.connect()
+    await this.update()
   },
   methods: {
     async connect() {
       await window.ethereum.enable()
-      const provider = new ethers.providers.Web3Provider(window.ethereum)
-      const network = await provider.getNetwork()
-      const chainID = network.chainID
-      if (chainID == 137) {
-        chain = "PLG"
-        c = PLG
-      } else if (chainID == 4) {
-        chain = "RKB"
-        c = RKB
-      }
+      this.provider = new ethers.providers.Web3Provider(window.ethereum)
       const web3 = new Web3(window.ethereum)
-      this.invoker = new Invoker(provider, web3)
-      const signer = provider.getSigner()
+      this.invoker = new Invoker(this.provider, web3)
+      const signer = this.provider.getSigner()
       this.account = await signer.getAddress()
       console.log("Invoker loaded:", this.invoker)
     },
     async update() {
       try {
+        const network = await this.provider.getNetwork()
+        const chainId = network.chainId
+        if (chainId == 137) {
+          this.chain = "PLG"
+          this.c = PLG
+        } else if (chainId == 4) {
+          this.chain = "RKB"
+          this.c = RKB
+        }
         this.partyTokens = await this.invoker.partyTokens(this.party)
       } catch (e) {
         console.log()
@@ -142,7 +142,14 @@ export default Vue.extend({
     },
     async fillNFT() {
       try {
-        await this.invoker.fillNFT(this.nftContract, this.tokenID, this.amount)
+        await this.invoker.fillNFT(
+          this.c.transferProxy,
+          this.c.exchange,
+          this.party,
+          this.nftContract,
+          this.tokenID,
+          this.amount
+        )
       } catch (e) {
         this.error = e
         console.log(e)
@@ -164,7 +171,12 @@ export default Vue.extend({
     },
     async placeNFT() {
       try {
-        await this.invoker.placeNFT(this.nftContract, this.tokenID, this.amount)
+        await this.invoker.placeNFT(
+          this.c.exchange,
+          this.nftContract,
+          this.tokenID,
+          this.amount
+        )
       } catch (e) {
         this.error = e
         console.log(e)
@@ -215,6 +227,8 @@ export default Vue.extend({
       try {
         this.error = "Waiting for deploy..."
         this.party = await this.invoker.startParty(
+          this.c.exchange,
+          this.c.partyFactory,
           this.nftContract,
           this.tokenID
         )

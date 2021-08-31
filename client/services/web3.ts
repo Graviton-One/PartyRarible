@@ -303,12 +303,7 @@ export default class Invoker {
     const owner = await nftContract.ownerOf(id)
     return owner
   }
-  async mint(
-    exchange: string,
-    nft: string,
-    to: string,
-    id: string
-  ): Promise<string> {
+  async mint(nft: string, to: string, id: string): Promise<string> {
     const nftContract = new ethers.Contract(
       nft,
       TestERC721ABI,
@@ -332,13 +327,14 @@ export default class Invoker {
     const ethAssetType: AssetType = {
       assetClass: "ETH",
     }
-
     const nftAssetType: AssetType = {
       assetClass: "ERC721",
       contract: toAddress(nft),
       tokenId: toBigNumber(id),
     }
+
     const signerAddress = await this.signer.getAddress()
+
     const tx = await partyFactoryContract.startParty(
       exchange,
       signerAddress,
@@ -350,6 +346,7 @@ export default class Invoker {
       "RBLP"
     )
     const receipt = await tx.wait()
+    console.log(receipt.logs[0])
     const log = receipt.logs[0]
 
     const addr = "0x" + ethers.utils.hexDataSlice(log.data, 12, 32)

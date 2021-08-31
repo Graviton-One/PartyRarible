@@ -98,21 +98,6 @@ contract PartyRaribleFactory {
             _name,
             _symbol
         );
-        // bytes memory _initializationCalldata = abi.encodeWithSignature(
-        //     "initialize(address,address,address,uint256,IExchangeV2.AssetType,IExchangeV2.AssetType,string,string)",
-        //     _exchange,
-        //     _nftOwner,
-        //     _nftContract,
-        //     _tokenId,
-        //     _ethAssetType,
-        //     _nftAssetType,
-        //     _name,
-        //     _symbol
-        // );
-
-        // partyBidProxy = address(
-        //     new InitializedProxy(logic, _initializationCalldata)
-        // );
 
         deployedAt[address(partyBidProxy)] = block.number;
 

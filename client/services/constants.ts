@@ -20,7 +20,7 @@ export const PLG: Chain = {
 
 export const RKB: Chain = {
   exchange: "0x12e0AA009024C5e6D1b12F677E2cD99A2284080a",
-  partyFactory: "0x38bbcA20af927208C15eb740a3F70E7c4AC80c61",
+  partyFactory: "0x9d2f7Dc325898E50D32783a95654eb377c994253",
   nftContract: "0x053F7Dc4c2BC0bA064071E1B6D080df4F0AA46f9",
   weth: "0xdf032bc4b9dc2782bb09352007d4c57b75160b15",
   vaultFactory: "0x458556c097251f52ca89cB81316B4113aC734BD1",
