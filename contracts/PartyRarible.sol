@@ -12,7 +12,6 @@ import {IERC721VaultFactory} from "./external/interfaces/IERC721VaultFactory.sol
 import {ITokenVault} from "./external/interfaces/ITokenVault.sol";
 import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {IWETH} from "./external/interfaces/IWETH.sol";
-import "hardhat/console.sol";
 
 // ============ Internal Imports ============
 // import {RaribleWrapper} from "./RaribleWrapper.sol";
@@ -245,7 +244,7 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
             _bid
         );
         IExchangeV2.Asset memory takeAsset = IExchangeV2.Asset(nftAssetType, 1);
-        bytes4 empty4;
+        bytes4 empty4 = 0xffffffff;
         bytes memory empty;
         IExchangeV2.Order memory order = IExchangeV2.Order({
             maker: address(this),
@@ -349,20 +348,16 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         partyStatus = _owner == address(this)
             ? PartyStatus.AUCTION_WON
             : PartyStatus.AUCTION_LOST;
-        uint256 _fee;
         // if the auction was won,
         if (partyStatus == PartyStatus.AUCTION_WON) {
-            // transfer 5% fee to PartyDAO
-            _fee = _getFee(highestBid);
-            _transferETHOrWETH(partyDAOMultisig, _fee);
             // record total spent by auction + PartyDAO fees
-            totalSpent = highestBid + _fee;
+            totalSpent = highestBid;
             // deploy fractionalized NFT vault
             // and mint fractional ERC-20 tokens
             _fractionalizeNFT(totalSpent);
         }
         // set the contract status & emit result
-        emit Finalized(partyStatus, totalSpent, _fee, totalContributedToParty);
+        emit Finalized(partyStatus, totalSpent, 0, totalContributedToParty);
     }
 
     // ======== External: Claim =========

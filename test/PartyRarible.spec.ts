@@ -106,7 +106,7 @@ describe.only("PartyRarible", () => {
 
       await partyRarible.contribute({ value: toBigNumber("10") })
 
-      await partyRarible.take(orderToStruct(left), left.signature || "0x")
+      await partyRarible.fill(orderToStruct(left), left.signature || "0x")
 
       expect(await nftContract.ownerOf(toBigNumber("1"))).to.eq(
         partyRarible.address
@@ -125,7 +125,6 @@ describe.only("PartyRarible", () => {
 
       const ethAssetType: AssetType = {
         assetClass: "ETH",
-        // contract: toAddress(weth.address),
       }
       const nftAssetType: AssetType = {
         assetClass: "ERC721",
@@ -189,17 +188,21 @@ describe.only("PartyRarible", () => {
         },
         right
       )
-      await exchange
-        .connect(artistSigner)
-        .matchOrders(order, signature, orderToStruct(right), signature)
+      await exchange.connect(artistSigner).matchOrders(
+        order,
+        // orderToStruct(order),
+        signature,
+        orderToStruct(right),
+        signature
+      )
 
-      expect(await nftContract.ownerOf(toBigNumber("1"))).to.eq(
+      expect(await nftContract.ownerOf(toBigNumber("2"))).to.eq(
         partyRarible.address
       )
     })
   })
 
-  describe("#finalize", async () => {
+  describe("#finalize & claim", async () => {
     it("fractionalizes nft after purchase", async () => {
       const partyFactory = await ethers.getContractFactory("PartyRarible")
       partyRarible = (await partyFactory.deploy(
@@ -228,7 +231,7 @@ describe.only("PartyRarible", () => {
         "WD"
       )
 
-      await partyRarible.contribute({ value: toBigNumber("7") })
+      await partyRarible.connect(wallet).contribute({ value: toBigNumber("7") })
       await partyRarible.connect(other).contribute({ value: toBigNumber("3") })
 
       await partyRarible.fill(orderToStruct(left), left.signature || "0x")
@@ -241,8 +244,11 @@ describe.only("PartyRarible", () => {
         tokenVaultAddress
       ) as TokenVault
 
-      expect(await tokenVault.balanceOf(wallet.address)).to.eq("70")
-      expect(await tokenVault.balanceOf(other.address)).to.eq("30")
+      await partyRarible.claim(wallet.address)
+      await partyRarible.claim(other.address)
+
+      expect(await tokenVault.balanceOf(wallet.address)).to.eq("7000")
+      expect(await tokenVault.balanceOf(other.address)).to.eq("3000")
     })
   })
 })

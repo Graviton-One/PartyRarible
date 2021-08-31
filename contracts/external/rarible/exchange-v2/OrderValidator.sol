@@ -8,29 +8,37 @@ import "./lib/LibSignature.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/drafts/EIP712Upgradeable.sol";
-import "hardhat/console.sol";
 
-abstract contract OrderValidator is Initializable, ContextUpgradeable, EIP712Upgradeable {
+abstract contract OrderValidator is
+    Initializable,
+    ContextUpgradeable,
+    EIP712Upgradeable
+{
     using LibSignature for bytes32;
     using AddressUpgradeable for address;
-    
-    bytes4 constant internal MAGICVALUE = 0x1626ba7e;
+
+    bytes4 internal constant MAGICVALUE = 0x1626ba7e;
 
     function __OrderValidator_init_unchained() internal initializer {
         __EIP712_init_unchained("Exchange", "2");
     }
 
-    function validate(LibOrder.Order memory order, bytes memory signature) internal view {
+    function validate(LibOrder.Order memory order, bytes memory signature)
+        internal
+        view
+    {
         if (order.salt == 0) {
             require(_msgSender() == order.maker, "maker is not tx sender");
         } else {
             if (_msgSender() != order.maker) {
                 bytes32 hash = LibOrder.hash(order);
-                console.log(signature.length);
                 if (_hashTypedDataV4(hash).recover(signature) != order.maker) {
                     if (order.maker.isContract()) {
                         require(
-                            ERC1271(order.maker).isValidSignature(_hashTypedDataV4(hash), signature) == MAGICVALUE,
+                            ERC1271(order.maker).isValidSignature(
+                                _hashTypedDataV4(hash),
+                                signature
+                            ) == MAGICVALUE,
                             "contract order signature verification error"
                         );
                     } else {
