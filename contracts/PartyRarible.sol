@@ -5,21 +5,14 @@ pragma solidity 0.8.5;
 // NOTE: we inherit from OpenZeppelin upgradeable contracts
 // because of the proxy structure used for cheaper deploys
 // (the proxies are NOT actually upgradeable)
-import {
-    ReentrancyGuardUpgradeable
-} from "@openzeppelin/contracts-upgradeable2/security/ReentrancyGuardUpgradeable.sol";
-import {
-    ERC721HolderUpgradeable
-} from "@openzeppelin/contracts-upgradeable2/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable2/security/ReentrancyGuardUpgradeable.sol";
+import {ERC721HolderUpgradeable} from "@openzeppelin/contracts-upgradeable2/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 // ============ External Imports: External Contracts & Contract Interfaces ============
-import {
-    IERC721VaultFactory
-} from "./external/interfaces/IERC721VaultFactory.sol";
+import {IERC721VaultFactory} from "./external/interfaces/IERC721VaultFactory.sol";
 import {ITokenVault} from "./external/interfaces/ITokenVault.sol";
-import {
-    IERC721Metadata
-} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import {IERC721Metadata} from "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import {IWETH} from "./external/interfaces/IWETH.sol";
+import "hardhat/console.sol";
 
 // ============ Internal Imports ============
 // import {RaribleWrapper} from "./RaribleWrapper.sol";
@@ -31,7 +24,11 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
     // State Transitions:
     //   (1) AUCTION_ACTIVE on deploy
     //   (2) AUCTION_WON or AUCTION_LOST on finalize()
-    enum PartyStatus {AUCTION_ACTIVE, AUCTION_WON, AUCTION_LOST}
+    enum PartyStatus {
+        AUCTION_ACTIVE,
+        AUCTION_WON,
+        AUCTION_LOST
+    }
 
     // ============ Structs ============
 
@@ -88,6 +85,7 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
 
     IExchangeV2.AssetType public ethAssetType;
     IExchangeV2.AssetType public nftAssetType;
+    IExchangeV2.Order public makeETHOrder;
     // ============ Events ============
 
     event Contributed(
@@ -97,11 +95,22 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         uint256 totalFromContributor
     );
 
-    event Make(address maker, IExchangeV2.AssetType makeAsset, address taker, IExchangeV2.AssetType takeAsset, uint256 salt);
+    event Make(
+        address maker,
+        IExchangeV2.AssetType makeAsset,
+        address taker,
+        IExchangeV2.AssetType takeAsset,
+        uint256 salt
+    );
 
     event Bid(uint256 amount);
 
-    event Finalized(PartyStatus result, uint256 totalSpent, uint256 fee, uint256 totalContributed);
+    event Finalized(
+        PartyStatus result,
+        uint256 totalSpent,
+        uint256 fee,
+        uint256 totalContributed
+    );
 
     event Claimed(
         address indexed contributor,
@@ -157,7 +166,10 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         name = _name;
         symbol = _symbol;
         // validate token exists
-        require(_nftOwner != address(0), "PartyRarible::initialize: NFT getOwner failed");
+        require(
+            _nftOwner != address(0),
+            "PartyRarible::initialize: NFT getOwner failed"
+        );
         // validate auction exists
         // require(
         //     ExchangeV2(_exchange).auctionIdMatchesToken(
@@ -183,15 +195,17 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         );
         address _contributor = msg.sender;
         uint256 _amount = msg.value;
-        require(_amount > 0, "PartyRarible::contribute: must contribute more than 0");
+        require(
+            _amount > 0,
+            "PartyRarible::contribute: must contribute more than 0"
+        );
         // get the current contract balance
         uint256 _previousTotalContributedToParty = totalContributedToParty;
         // add contribution to contributor's array of contributions
-        Contribution memory _contribution =
-            Contribution({
-                amount: _amount,
-                previousTotalContributedToParty: _previousTotalContributedToParty
-            });
+        Contribution memory _contribution = Contribution({
+            amount: _amount,
+            previousTotalContributedToParty: _previousTotalContributedToParty
+        });
         contributions[_contributor].push(_contribution);
         // add to contributor's total contribution
         totalContributed[_contributor] =
@@ -216,7 +230,7 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
      * Emits a Bid event upon success.
      * Callable by any contributor
      */
-    function make() external nonReentrant {
+    function place() external nonReentrant {
         require(
             partyStatus == PartyStatus.AUCTION_ACTIVE,
             "PartyRarible::bid: auction not active"
@@ -226,28 +240,41 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
             "PartyRarible::bid: only contributors can bid"
         );
         uint256 _bid = totalContributedToParty;
-        IExchangeV2.Asset memory makeAsset = IExchangeV2.Asset(ethAssetType, _bid);
+        IExchangeV2.Asset memory makeAsset = IExchangeV2.Asset(
+            ethAssetType,
+            _bid
+        );
         IExchangeV2.Asset memory takeAsset = IExchangeV2.Asset(nftAssetType, 1);
         bytes4 empty4;
         bytes memory empty;
         IExchangeV2.Order memory order = IExchangeV2.Order({
-                maker: address(this),
-                makeAsset: makeAsset,
-                taker: address(0),
-                takeAsset: takeAsset,
-                salt: 0,
-                start: 0,
-                end: 0,
-                dataType: empty4,
-                data: empty
-            });
-        IExchangeV2(exchange).upsertOrder(order);
+            maker: address(this),
+            makeAsset: makeAsset,
+            taker: address(0),
+            takeAsset: takeAsset,
+            salt: 0,
+            start: 0,
+            end: 0,
+            dataType: empty4,
+            data: empty
+        });
+        IExchangeV2(exchange).upsertOrder{value: _bid}(order);
+        makeETHOrder = order;
         // update highest bid submitted & emit success event
         highestBid = _bid;
-        emit Make(address(this), makeAsset.assetType, address(0), takeAsset.assetType, 0);
+        emit Make(
+            address(this),
+            makeAsset.assetType,
+            address(0),
+            takeAsset.assetType,
+            1
+        );
     }
 
-    function take(IExchangeV2.Order calldata makeOrder, bytes calldata makeSignature) external nonReentrant {
+    function fill(
+        IExchangeV2.Order calldata makeNFTOrder,
+        bytes calldata makeSignature
+    ) external nonReentrant {
         require(
             partyStatus == PartyStatus.AUCTION_ACTIVE,
             "PartyRarible::bid: auction not active"
@@ -257,37 +284,49 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
             "PartyRarible::bid: only contributors can bid"
         );
         uint256 _bid = totalContributedToParty;
-        IExchangeV2.Asset memory makeAsset = IExchangeV2.Asset(nftAssetType, 1);
-        IExchangeV2.Asset memory takeAsset = IExchangeV2.Asset(ethAssetType, _bid);
+        IExchangeV2.Asset memory makeAsset = IExchangeV2.Asset(
+            ethAssetType,
+            _bid
+        );
+        IExchangeV2.Asset memory takeAsset = IExchangeV2.Asset(nftAssetType, 1);
         bytes4 empty4;
         bytes memory empty;
         IExchangeV2.Order memory takeOrder = IExchangeV2.Order({
-                maker: _getOwner(),
-                makeAsset: makeAsset,
-                taker: address(this),
-                takeAsset: takeAsset,
-                salt: 0,
-                start: 0,
-                end: 0,
-                dataType: empty4,
-                data: empty
-            });
-        uint256 zero = 0;
-        bytes memory takeSignature = abi.encodePacked(zero);
-        IExchangeV2(exchange).matchOrders(makeOrder, makeSignature, takeOrder, takeSignature);
-        // update highest bid submitted & emit success event
+            maker: address(this),
+            makeAsset: makeAsset,
+            taker: _getOwner(),
+            takeAsset: takeAsset,
+            salt: 1,
+            start: 0,
+            end: 0,
+            dataType: empty4,
+            data: empty
+        });
+        IExchangeV2(exchange).matchOrders{value: _bid}(
+            makeNFTOrder,
+            makeSignature,
+            takeOrder,
+            makeSignature
+        );
         highestBid = _bid;
-        emit Bid(_bid);
+        emit Make(
+            address(this),
+            makeAsset.assetType,
+            address(0),
+            takeAsset.assetType,
+            1
+        );
     }
+
     // ======== External: Finalize =========
 
-    bytes4 constant internal MAGICVALUE = 0x1626ba7e;
-    function isValidSignature(
-        bytes32 _hash,
-        bytes memory _signature)
+    bytes4 internal constant MAGICVALUE = 0x1626ba7e;
+
+    function isValidSignature(bytes32 _hash, bytes memory _signature)
         public
         view
-        returns (bytes4 magicValue) {
+        returns (bytes4 magicValue)
+    {
         return MAGICVALUE;
     }
 
@@ -307,7 +346,9 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         // after the auction has been finalized,
         // if the NFT is owned by the PartyRarible, then the PartyRarible won the auction
         address _owner = _getOwner();
-        partyStatus = _owner == address(this) ? PartyStatus.AUCTION_WON : PartyStatus.AUCTION_LOST;
+        partyStatus = _owner == address(this)
+            ? PartyStatus.AUCTION_WON
+            : PartyStatus.AUCTION_LOST;
         uint256 _fee;
         // if the auction was won,
         if (partyStatus == PartyStatus.AUCTION_WON) {
@@ -354,8 +395,9 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         // calculate the amount of fractional NFT tokens owed to the user
         // based on how much ETH they contributed towards the auction,
         // and the amount of excess ETH owed to the user
-        (uint256 _tokenAmount, uint256 _ethAmount) =
-            _calculateTokensAndETHOwed(_contributor);
+        (uint256 _tokenAmount, uint256 _ethAmount) = _calculateTokensAndETHOwed(
+            _contributor
+        );
         // transfer tokens to contributor for their portion of ETH used
         if (_tokenAmount > 0) {
             _transferTokens(_contributor, _tokenAmount);
@@ -379,10 +421,7 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
      * PartyDAO can use emergencyWithdrawEth to withdraw
      * ETH stuck in the contract
      */
-    function emergencyWithdrawEth(uint256 _value)
-        external
-        onlyPartyDAO
-    {
+    function emergencyWithdrawEth(uint256 _value) external onlyPartyDAO {
         _transferETHOrWETH(partyDAOMultisig, _value);
     }
 
@@ -405,10 +444,7 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
      * PartyDAO can force the PartyRarible to finalize with status LOST
      * (e.g. if finalize is not callable)
      */
-    function emergencyForceLost()
-        external
-        onlyPartyDAO
-    {
+    function emergencyForceLost() external onlyPartyDAO {
         // set partyStatus to LOST
         partyStatus = PartyStatus.AUCTION_LOST;
         // emit Finalized event
@@ -453,21 +489,17 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
     // ============ Internal: Finalize ============
 
     /**
-    * @notice Query the NFT contract to get the token owner
-    * @dev nftContract must implement the ERC-721 token standard exactly:
-    * function ownerOf(uint256 _tokenId) external view returns (address);
-    * See https://eips.ethereum.org/EIPS/eip-721
-    * @dev Returns address(0) if NFT token or NFT contract
-    * no longer exists (token burned or contract self-destructed)
-    * @return _owner the owner of the NFT
-    */
+     * @notice Query the NFT contract to get the token owner
+     * @dev nftContract must implement the ERC-721 token standard exactly:
+     * function ownerOf(uint256 _tokenId) external view returns (address);
+     * See https://eips.ethereum.org/EIPS/eip-721
+     * @dev Returns address(0) if NFT token or NFT contract
+     * no longer exists (token burned or contract self-destructed)
+     * @return _owner the owner of the NFT
+     */
     function _getOwner() internal returns (address _owner) {
-        (bool success, bytes memory returnData) =
-            nftContract.call(
-                abi.encodeWithSignature(
-                    "ownerOf(uint256)",
-                    tokenId
-                )
+        (bool success, bytes memory returnData) = nftContract.call(
+            abi.encodeWithSignature("ownerOf(uint256)", tokenId)
         );
         if (success && returnData.length > 0) {
             _owner = abi.decode(returnData, (address));
@@ -482,16 +514,15 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
         // approve fractionalized NFT Factory to withdraw NFT
         IERC721Metadata(nftContract).approve(tokenVaultFactory, tokenId);
         // deploy fractionalized NFT vault
-        uint256 vaultNumber =
-            IERC721VaultFactory(tokenVaultFactory).mint(
-                name,
-                symbol,
-                nftContract,
-                tokenId,
-                valueToTokens(_totalSpent),
-                _totalSpent,
-                0
-            );
+        uint256 vaultNumber = IERC721VaultFactory(tokenVaultFactory).mint(
+            name,
+            symbol,
+            nftContract,
+            tokenId,
+            valueToTokens(_totalSpent),
+            _totalSpent,
+            0
+        );
         // store token vault address to storage
         tokenVault = IERC721VaultFactory(tokenVaultFactory).vaults(vaultNumber);
         // transfer curator to null address
@@ -590,15 +621,17 @@ contract PartyRarible is ReentrancyGuardUpgradeable, ERC721HolderUpgradeable {
     // ============ Internal: TransferTokens ============
 
     /**
-    * @notice Transfer tokens to a recipient
-    * @param _to recipient of tokens
-    * @param _value amount of tokens
-    */
+     * @notice Transfer tokens to a recipient
+     * @param _to recipient of tokens
+     * @param _value amount of tokens
+     */
     function _transferTokens(address _to, uint256 _value) internal {
         // guard against rounding errors;
         // if token amount to send is greater than contract balance,
         // send full contract balance
-        uint256 _partyBidBalance = ITokenVault(tokenVault).balanceOf(address(this));
+        uint256 _partyBidBalance = ITokenVault(tokenVault).balanceOf(
+            address(this)
+        );
         if (_value > _partyBidBalance) {
             _value = _partyBidBalance;
         }

@@ -8,6 +8,7 @@ import "./lib/LibSignature.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/drafts/EIP712Upgradeable.sol";
+import "hardhat/console.sol";
 
 abstract contract OrderValidator is Initializable, ContextUpgradeable, EIP712Upgradeable {
     using LibSignature for bytes32;
@@ -25,6 +26,7 @@ abstract contract OrderValidator is Initializable, ContextUpgradeable, EIP712Upg
         } else {
             if (_msgSender() != order.maker) {
                 bytes32 hash = LibOrder.hash(order);
+                console.log(signature.length);
                 if (_hashTypedDataV4(hash).recover(signature) != order.maker) {
                     if (order.maker.isContract()) {
                         require(

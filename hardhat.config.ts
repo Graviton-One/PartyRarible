@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv"
 dotenv.config({ path: __dirname + "/.env" })
 
+import "@nomiclabs/hardhat-web3"
 import "@typechain/hardhat"
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-waffle"

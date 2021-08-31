@@ -1,4 +1,4 @@
-import { ethers, waffle, upgrades } from "hardhat"
+import { ethers, waffle, upgrades, web3 } from "hardhat"
 import { BigNumber } from "ethers"
 
 import { Fixture } from "ethereum-waffle"
@@ -9,10 +9,12 @@ import {
   tokenID3,
   orderToStruct,
   SimpleOrder,
+  signOrder,
 } from "./utilities"
 
 import { IWETH } from "../../typechain/IWETH"
 import { TestERC721 } from "../../typechain/TestERC721"
+import { Settings } from "../../typechain/Settings"
 import { ERC721VaultFactory } from "../../typechain/ERC721VaultFactory"
 
 import { LibOrderTest } from "../../typechain/LibOrderTest"
@@ -21,6 +23,7 @@ import { ERC20TransferProxyTest } from "../../typechain/ERC20TransferProxyTest"
 import { ExchangeV2 } from "../../typechain/ExchangeV2"
 
 import { PartyRarible } from "../../typechain/PartyRarible"
+import { Web3Ethereum } from "@rarible/web3-ethereum"
 
 import {
   toAddress,
@@ -49,7 +52,7 @@ export const tokensFixture: Fixture<TokensFixture> = async function (
   const nftContract = (await nftFactory.deploy()) as TestERC721
 
   // Mint token to artist
-  await nftContract.mint(artistSigner.address, tokenID1)
+  await nftContract.mint(artistSigner.address, toBigNumber("1"))
   await nftContract.mint(artistSigner.address, tokenID2)
 
   return {
@@ -83,8 +86,13 @@ export const fractionsFixture: Fixture<FractionsFixture> = async function (
   }
 }
 
-interface ExchangeFixture extends TokensFixture {
+type TokensAndFracionsFixture = TokensFixture & FractionsFixture
+
+interface ExchangeFixture extends TokensAndFracionsFixture {
+  transferProxy: TransferProxyTest
+  erc20TransferProxy: ERC20TransferProxyTest
   exchange: ExchangeV2
+  left: SimpleOrder
 }
 
 export const exchangeFixture: Fixture<ExchangeFixture> = async function (
@@ -96,7 +104,11 @@ export const exchangeFixture: Fixture<ExchangeFixture> = async function (
     provider
   )
 
-  console.log(1)
+  const { settings, vaultFactory } = await fractionsFixture(
+    [wallet, other, artistSigner],
+    provider
+  )
+
   const libOrderFactory = await ethers.getContractFactory("LibOrderTest")
   const libOrder = (await libOrderFactory.deploy()) as LibOrderTest
   const transferProxyFactory = await ethers.getContractFactory(
@@ -110,7 +122,6 @@ export const exchangeFixture: Fixture<ExchangeFixture> = async function (
   const erc20TransferProxy =
     (await erc20TransferProxyTestFactory.deploy()) as ERC20TransferProxyTest
 
-  console.log(2)
   const exchangeFactory = await ethers.getContractFactory("ExchangeSimpleV2")
   const exchange = (await upgrades.deployProxy(
     exchangeFactory,
@@ -118,9 +129,10 @@ export const exchangeFixture: Fixture<ExchangeFixture> = async function (
     { initializer: "__ExchangeSimpleV2_init" }
   )) as ExchangeV2
 
-  console.log(3)
   // Approve NFT Transfer to Foundation Exchange
-  await nftContract.connect(artistSigner).approve(exchange.address, tokenID1)
+  await nftContract
+    .connect(artistSigner)
+    .setApprovalForAll(transferProxy.address, true)
 
   const reservePrice = eth("10")
   // place order
@@ -131,13 +143,12 @@ export const exchangeFixture: Fixture<ExchangeFixture> = async function (
         contract: toAddress(nftContract.address),
         tokenId: toBigNumber("1"),
       },
-      value: toBigNumber("5"),
+      value: toBigNumber("1"),
     },
     maker: toAddress(artistSigner.address),
     take: {
       assetType: {
-        assetClass: "ERC20",
-        contract: toAddress(weth.address),
+        assetClass: "ETH",
       },
       value: toBigNumber("10"),
     },
@@ -149,12 +160,32 @@ export const exchangeFixture: Fixture<ExchangeFixture> = async function (
       originFees: [],
     },
   }
-
-  console.log(4)
-  await exchange.upsertOrder(orderToStruct(left))
+  const ethereum2 = new Web3Ethereum({
+    web3,
+    from: toAddress(artistSigner.address),
+    gas: 1000000,
+  })
+  const signature = await signOrder(
+    ethereum2,
+    {
+      chainId: 1,
+      exchange: {
+        v1: toAddress(exchange.address),
+        v2: toAddress(exchange.address),
+      },
+    },
+    left
+  )
+  left.signature = signature
+  await exchange.connect(artistSigner).upsertOrder(orderToStruct(left))
   return {
     weth,
     nftContract,
+    settings,
+    vaultFactory,
+    transferProxy,
+    erc20TransferProxy,
     exchange,
+    left,
   }
 }
