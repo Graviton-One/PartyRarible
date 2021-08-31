@@ -13,7 +13,7 @@ yarn run hardhat test
 ** Polygon
 
 PartyRaribleFactory
-https://polygonscan.com/address/0x9d2f7Dc325898E50D32783a95654eb377c994253#code
+https://polygonscan.com/address/0x5B1C102A6d849F9cfe2B1369AffDd57f5678B91d#code
 
 Rarible ExchangeV2
 https://polygonscan.com/address/0xA0447eE66E44BF567FF9287107B0c3D2F88efD93#code
