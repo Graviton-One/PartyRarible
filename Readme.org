@@ -1,17 +1,28 @@
-#+TITLE: Dao Bid
+#+TITLE: PartyRarible
 
-* happy path
- 1. initial user deploys NFTDAO contract, receives a number of ERC20 DAO tokens
- 2. initial distribution of ERC20 DAO tokens
-    a) airdrop shares to users
-    b) let users purchase shares from the contract, price is based on locked ETH value and NFT value
- 3. DAO members vote to buy an NFT
- 4. if the vote to buy is successful, NFTDAO deploys a DAOBid contract to join the auction to buy NFT
- 5. DAO members contribute to DAOBid and compete with other bidders for an NFT
- 6. if the auction is won, NFTDAO receives the NFT from DAOBid and mints new DAO tokens proportional to auction contributions
- 7. DAO members vote for the price of each NFT
- 8. DAO members vote to sell an NFT
- 9. if the vote to sell is successful, NFTDAO starts an auction to sell
- 10. bidders compete to buy the NFT, the highest bidder transfers ETH to NFTDAO and receives the NFT
- 11. NFTDAO uses ETH gained from selling to buy new NFTs
- 12. DAO members withdraw ETH in exchange for shares, (burns or buybacks)
+PartyRarible allows to trade with your friends on Rarible and fractionalize the NFT in proportion to contributions.
+
+Thanks to awesome PartyBid and Rarible protocols. Uses [[https://github.com/rarible/protocol-contracts/tree/feature/onchain_order_book][feature/onchain_order_book]] of Rarible contracts repo.
+
+#+begin_src sh
+yarn
+yarn run hardhat compile
+yarn run hardhat test
+#+end_src
+
+** Polygon
+
+PartyRaribleFactory
+https://polygonscan.com/address/0x9d2f7Dc325898E50D32783a95654eb377c994253#code
+
+Rarible ExchangeV2
+https://polygonscan.com/address/0xA0447eE66E44BF567FF9287107B0c3D2F88efD93#code
+
+Fractionalized vault factory
+https://polygonscan.com/address/0x7fCCE1303F7e1fc14780C87F6D67346EC44a4027
+
+weth
+https://polygonscan.com/address/0x7ceb23fd6bc0add59e62ac25578270cff1b9f619
+
+test ERC721
+https://polygonscan.com/address/0x8d712f350A55D65427EfcE56Ec6a36fef28e8Ac9
